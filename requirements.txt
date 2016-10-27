@@ -1,0 +1,3 @@
+sleekxmpp
+pyyaml
+-e git+https://github.com/matrix-org/matrix-python-sdk.git#egg=matrix_client

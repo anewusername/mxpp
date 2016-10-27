@@ -1,0 +1,66 @@
+# mxpp
+
+**mxpp** is a bot which bridges Matrix and one-to-one XMPP chat.
+
+I wrote this bot to finally get persistent chat history for my 
+gchat/hangouts/google talk conversations, and to evaluate Matrix
+for future use, so it should probably work for those use cases.
+
+
+**Functionality**
+
+* The bot creates one Matrix room for each user on your contact list,
+then invites a list of Matrix users (of your choosing) to all the rooms.
+    - Room name is set to the contact's name.
+    - Room topic is set to the contact's JID.
+    - Any text sent to the room is sent to the contact's JID.
+    * Any text received from the contact's JID is sent as a notice
+      to the room.
+* A room named "XMPP Control Room" is created
+    - Presence info ("available" or "unavailable") is sent to this room
+    - Text command "purge" makes the bot leave from any rooms which do
+      not correspond to a roster entry (excluding the two special rooms)
+    - Text command "refresh" probes the presence of all XMPP contacts
+      and requests a roster update from the server.
+* A room named "XMPP All Chat" is created
+    - All inbound and outbound chat messages are logged here.
+    - The bot complains if you talk in here.
+* If the bot is restarted, it recreates its room-JID map based on the
+  room topics, and continues as before.
+* Currently, the bot automatically accepts anytime anyone asks to add
+  you on XMPP, and also automatically adds them to your contact roster.
+
+
+## Installation
+Install the dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+Edit config.yaml to set your usernames, passwords, and servers.
+
+If you're using your own homeserver and you have more than a handful of
+ XMPP contacts, you'll probably want to loosen the rate limits on your
+ homeserver (see ```homeserver.yaml``` for synapse), or you'll have to
+ wait multiple minutes while the bot creates a bunch of new rooms.
+
+From the same directory as ```config.yaml```, run
+```bash
+python3 -m mxpp.main
+```
+
+**Dependencies:**
+
+* python 3 (written and tested with 3.5)
+* [sleekXMPP](https://pypi.python.org/pypi/sleekxmpp/1.3.1)
+* [matrix_client](https://github.com/matrix-org/matrix-python-sdk) (currently requires git version)
+* [pyyaml](https://pypi.python.org/pypi/PyYAML/3.12)
+* and their dependencies (dnspython, requests, others?)
+
+
+## TODO
+
+* Set bot's presence for each room individually
+* Require higher-than-default power-level to speak in All-chat (i.e.,
+only let the bot talk in all-chat)
+* Config options for XMPP auto_authorize and auto_subscribe

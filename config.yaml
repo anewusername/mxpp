@@ -1,0 +1,33 @@
+matrix:
+  server:
+    # Server's base url, without trailing /
+    base_url:         'https://matrix.org'
+    valid_cert_check: true
+
+  login:
+    # username is also used as the id that the bot will be known as
+    #  (eg. to make sure it ignores its own messages)
+    #  so make sure it's of the form @user:host
+    username: '@xmpp-bot-username:matrix.org'
+    password: '<my_matrix_password>'
+
+  # Users who will be invited to all of the bot's rooms
+  users_to_invite:
+    - '@owner:matrix.org'
+
+  # Topics set in the special rooms, used by the bot to recognize these rooms.
+  room_topics:
+    control:  'xmpp-bot-control'
+    all_chat: 'xmpp-bot-all_chat'
+
+xmpp:
+  server:
+    host: talk.google.com
+    port: 5222
+
+  login:
+    # JID should be of the form of what@where.net
+    jid:      'myname@gmail.com'
+
+    # If you use 2-factor auth with google, you'll need to generate an app password for here
+    password: '<myXMPPpassword>'
