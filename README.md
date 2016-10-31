@@ -44,6 +44,10 @@ If you're using your own homeserver and you have more than a handful of
  homeserver (see ```homeserver.yaml``` for synapse), or you'll have to
  wait multiple minutes while the bot creates a bunch of new rooms.
 
+You should probably also set your Matrix client to auto-accept new room
+ invitations for the first run of the bot, so you don't have to
+ manually accept each invitation.
+
 From the same directory as ```config.yaml```, run
 ```bash
 python3 -m mxpp.main
@@ -53,7 +57,8 @@ python3 -m mxpp.main
 
 * python 3 (written and tested with 3.5)
 * [sleekXMPP](https://pypi.python.org/pypi/sleekxmpp/1.3.1)
-* [matrix_client](https://github.com/matrix-org/matrix-python-sdk) (currently requires git version)
+* [matrix_client](https://github.com/matrix-org/matrix-python-sdk)
+  (currently requires git version)
 * [pyyaml](https://pypi.python.org/pypi/PyYAML/3.12)
 * and their dependencies (dnspython, requests, others?)
 
