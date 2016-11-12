@@ -66,6 +66,9 @@ python3 -m mxpp.main
 ## TODO
 
 * Set bot's presence for each room individually
+ (impossible with current Matrix m.presence API)
+* Set bot's name for each room individually
+ (waiting on support from synapse)
 * Require higher-than-default power-level to speak in All-chat (i.e.,
 only let the bot talk in all-chat)
-* Config options for XMPP auto_authorize and auto_subscribe
+ (waiting on matrix_client pull request)
