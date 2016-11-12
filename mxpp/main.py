@@ -62,7 +62,8 @@ class BridgeBot:
 
         for topic, room in self.special_rooms.items():
             if room is None:
-                self.create_special_room(topic)
+                room = self.matrix.create_room()
+            self.setup_special_room(room, topic)
 
         self.special_rooms['control'].add_listener(self.matrix_control_message, 'm.room.message')
         self.special_rooms['all_chat'].add_listener(self.matrix_all_chat_message, 'm.room.message')
@@ -121,19 +122,20 @@ class BridgeBot:
                           if room_id not in valid_room_ids]
         return unmapped_rooms
 
-    def create_special_room(self, topic: str):
+    def setup_special_room(self, room, topic: str):
         """
-        Creates a Matrix room with the requested topic and adds it to the self.special_rooms map.
+        Sets up a Matrix room with the requested topic and adds it to the self.special_rooms map.
 
-        If a special room with that topic already exists, it is replaced in the special_rooms map by the new room.
-        :param topic:
+        If a special room with that topic already exists, it is replaced in the special_rooms
+         map by the new room.
+        :param room: Room to set up
+        :param topic: Topic for the room
         """
-        room = self.matrix.create_room()
         room.set_room_topic(topic)
         room.set_room_name(self.special_room_names[topic])
         self.special_rooms[topic] = room
 
-        logging.debug('Created special room with topic {} and id'.format(
+        logging.debug('Set up special room with topic {} and id'.format(
             str(room.topic), room.room_id))
 
     def create_mapped_room(self, topic: str, name: str=None):
