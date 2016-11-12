@@ -39,6 +39,9 @@ class BridgeBot:
     xmpp_login = None           # type: Dict[str, str]
     xmpp_roster_options = {}    # type: Dict[str, bool]
 
+    send_messages_to_all_chat = True    # type: bool
+    send_presences_to_control = True    # type: bool
+
     @property
     def bot_id(self) -> str:
         return self.matrix_login['username']
@@ -98,6 +101,8 @@ class BridgeBot:
                             config['xmpp']['server']['port'])
         self.xmpp_login = config['xmpp']['login']
 
+        self.send_presences_to_control = config['send_presences_to_control']
+        self.send_messages_to_all_chat = config['send_messages_to_all_chat']
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
 
@@ -257,7 +262,9 @@ class BridgeBot:
             logging.info('Matrix received message to {} : {}'.format(jid, message_body))
 
             self.xmpp.send_message(mto=jid, mbody=message_body, mtype='chat')
-            self.special_rooms['all_chat'].send_notice('To {} : {}'.format(name, message_body))
+
+            if self.send_messages_to_all_chat:
+                self.special_rooms['all_chat'].send_notice('To {} : {}'.format(name, message_body))
 
     def xmpp_message(self, message: Dict):
         """
@@ -276,7 +283,8 @@ class BridgeBot:
 
             room = self.get_room_for_jid(from_jid)
             room.send_text(message['body'])
-            self.special_rooms['all_chat'].send_text('From {}: {}'.format(from_name, message['body']))
+            if self.send_messages_to_all_chat:
+                self.special_rooms['all_chat'].send_text('From {}: {}'.format(from_name, message['body']))
 
     def xmpp_presence_available(self, presence: Dict):
         """
@@ -294,8 +302,9 @@ class BridgeBot:
             self.xmpp.get_roster()
             return
 
-        name = self.xmpp.jid_nick_map[jid]
-        self.special_rooms['control'].send_notice('{} available ({})'.format(name, jid))
+        if self.send_presences_to_control:
+            name = self.xmpp.jid_nick_map[jid]
+            self.special_rooms['control'].send_notice('{} available ({})'.format(name, jid))
 
     def xmpp_presence_unavailable(self, presence):
         """
@@ -307,9 +316,10 @@ class BridgeBot:
         """
         logging.debug('XMPP received {} : (unavailable)'.format(presence['from'].full))
 
-        jid = presence['from'].bare
-        name = self.xmpp.jid_nick_map[jid]
-        self.special_rooms['control'].send_notice('{} unavailable ({})'.format(name, jid))
+        if self.send_presences_to_control:
+            jid = presence['from'].bare
+            name = self.xmpp.jid_nick_map[jid]
+            self.special_rooms['control'].send_notice('{} unavailable ({})'.format(name, jid))
 
     def xmpp_roster_update(self, _event):
         """

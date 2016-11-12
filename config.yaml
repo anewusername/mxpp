@@ -39,3 +39,8 @@ xmpp:
     auto_subscribe: true
 
 
+# Send presence notices to the control channel
+send_presences_to_control: true
+
+# Send a copy of all messages to the all_chat channel
+send_messages_to_all_chat: true
