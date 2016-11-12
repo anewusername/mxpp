@@ -8,7 +8,11 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
     roster_dict = {}
     jid_nick_map = {}
 
-    def __init__(self, jid, password):
+    def __init__(self,
+                 jid: str,
+                 password: str,
+                 auto_authorize: bool=True,
+                 auto_subscribe: bool=True):
         sleekxmpp.ClientXMPP.__init__(self, jid, password)
 
         self.add_event_handler('session_start', self.session_start)
@@ -19,8 +23,8 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
         self.register_plugin('xep_0060')  # PubSub
         self.register_plugin('xep_0199')  # XMPP Ping
 
-        self.auto_authorize = True
-        self.auto_subscribe = True
+        self.auto_authorize = auto_authorize
+        self.auto_subscribe = auto_subscribe
 
     def session_start(self, _event):
         try:

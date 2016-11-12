@@ -37,6 +37,7 @@ class BridgeBot:
     matrix_login = None         # type: Dict[str, str]
     xmpp_server = None          # type: Tuple[str, int]
     xmpp_login = None           # type: Dict[str, str]
+    xmpp_roster_options = {}    # type: Dict[str, bool]
 
     @property
     def bot_id(self) -> str:
@@ -46,7 +47,7 @@ class BridgeBot:
         self.load_config(config_file)
 
         self.matrix = MatrixClient(**self.matrix_server)
-        self.xmpp = ClientXMPP(**self.xmpp_login)
+        self.xmpp = ClientXMPP(**self.xmpp_login, **self.xmpp_roster_options)
 
         self.matrix.login_with_password(**self.matrix_login)
 
@@ -95,6 +96,9 @@ class BridgeBot:
         self.xmpp_server = (config['xmpp']['server']['host'],
                             config['xmpp']['server']['port'])
         self.xmpp_login = config['xmpp']['login']
+
+
+        self.xmpp_roster_options = config['xmpp']['roster_options']
 
     def get_room_for_jid(self, jid: str) -> MatrixRoom:
         """

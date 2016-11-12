@@ -31,3 +31,11 @@ xmpp:
 
     # If you use 2-factor auth with google, you'll need to generate an app password for here
     password: '<myXMPPpassword>'
+
+  roster_options:
+    # Automatically accept any buddy requests
+    auto_authorize: true
+    # Automatically add and buddy who asks
+    auto_subscribe: true
+
+
