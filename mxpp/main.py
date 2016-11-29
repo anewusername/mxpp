@@ -50,7 +50,9 @@ class BridgeBot:
         self.load_config(config_file)
 
         self.matrix = MatrixClient(**self.matrix_server)
-        self.xmpp = ClientXMPP(**self.xmpp_login, **self.xmpp_roster_options)
+        xmpp_args = self.xmpp_login.copy()
+        xmpp_args.update(self.xmpp_roster_options)
+        self.xmpp = ClientXMPP(**xmpp_args)
 
         self.matrix.login_with_password(**self.matrix_login)
 
