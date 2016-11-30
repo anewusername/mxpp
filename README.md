@@ -1,4 +1,8 @@
-# mxpp
+# mxpp (*py3.4*)
+
+**The py3.4 branch is a mostly-unmaintained attempt to make mxpp work on
+ python 3.4**
+
 
 **mxpp** is a bot which bridges Matrix and one-to-one XMPP chat.
 
