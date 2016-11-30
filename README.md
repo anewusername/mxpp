@@ -55,7 +55,7 @@ python3 -m mxpp.main
 
 **Dependencies:**
 
-* python 3 (written and tested with 3.5)
+* python >=3.5 (written and tested with 3.5)
 * [sleekXMPP](https://pypi.python.org/pypi/sleekxmpp/1.3.1)
 * [matrix_client](https://github.com/matrix-org/matrix-python-sdk)
   (currently requires git version)
