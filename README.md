@@ -64,6 +64,7 @@ python3 -m mxpp.main
 * [matrix_client](https://github.com/matrix-org/matrix-python-sdk)
   (currently requires git version)
 * [pyyaml](https://pypi.python.org/pypi/PyYAML/3.12)
+* [typing](https://pypi.python.org/pypi/typing/3.5.2)
 * and their dependencies (dnspython, requests, others?)
 
 
