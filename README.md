@@ -19,7 +19,8 @@ then invites a list of Matrix users (of your choosing) to all the rooms.
 * A room named "XMPP Control Room" is created
     - Presence info ("available" or "unavailable") is sent to this room
     - Text command "purge" makes the bot leave from any rooms which do
-      not correspond to a roster entry (excluding the two special rooms)
+      not correspond to a roster entry (excluding the two special rooms),
+      and also from any unoccupied rooms (eg. if the user left).
     - Text command "refresh" probes the presence of all XMPP contacts
       and requests a roster update from the server.
 * A room named "XMPP All Chat" is created

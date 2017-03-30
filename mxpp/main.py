@@ -209,7 +209,7 @@ class BridgeBot:
 
         Does nothing unless a valid command is received:
           refresh  Probes the presence of all XMPP contacts, and updates the roster.
-          purge    Leaves any un-mapped, non-special Matrix rooms.
+          purge    Leaves any ((un-mapped and non-special) or empty) Matrix rooms.
 
         :param room: Matrix room object representing the control room
         :param event: The Matrix event that was received. Assumed to be an m.room.message .
@@ -235,7 +235,7 @@ class BridgeBot:
                 self.special_rooms['control'].send_text('Purging unused rooms')
 
                 # Leave from unwanted rooms
-                for room in self.get_unmapped_rooms():
+                for room in self.get_unmapped_rooms() + self.get_empty_rooms():
                     logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
                     room.leave()
 
