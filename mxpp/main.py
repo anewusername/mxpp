@@ -133,6 +133,16 @@ class BridgeBot:
                           if room_id not in valid_room_ids]
         return unmapped_rooms
 
+    def get_empty_rooms(self) -> List[MatrixRoom]:
+        """
+        Returns a list of all Matrix rooms which are occupied by only one user
+        (the bot itself).
+        :return: List of Matrix rooms occupied by only the bot.
+        """
+        empty_rooms = [room for room in self.matrix.get_rooms().values()
+                       if len(room.get_joined_members()) < 2]
+        return empty_rooms
+
     def setup_special_room(self, room, topic: str):
         """
         Sets up a Matrix room with the requested topic and adds it to the self.special_rooms map.
