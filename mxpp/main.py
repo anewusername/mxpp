@@ -19,17 +19,11 @@ logging.getLogger(requests.__name__).setLevel(logging.ERROR)
 
 
 class BridgeBot:
-    xmpp = None             # type: ClientXMPP
-    matrix = None           # type: MatrixClient
-    topic_room_id_map = {}  # type: Dict[str, str]
-    special_rooms = {
-        'control': None,
-        'all_chat': None,
-    }                       # type: Dict[str, MatrixRoom]
-    special_room_names = {
-        'control': 'XMPP Control Room',
-        'all_chat': 'XMPP All Chat',
-    }                       # type: Dict[str, str]
+    xmpp = None                # type: ClientXMPP
+    matrix = None              # type: MatrixClient
+    topic_room_id_map = None   # type: Dict[str, str]
+    special_rooms = None       # type: Dict[str, MatrixRoom]
+    special_room_names = None  # type: Dict[str, str]
 
     users_to_invite = None      # type: List[str]
     matrix_room_topics = None   # type: Dict[str, str]
@@ -37,7 +31,7 @@ class BridgeBot:
     matrix_login = None         # type: Dict[str, str]
     xmpp_server = None          # type: Tuple[str, int]
     xmpp_login = None           # type: Dict[str, str]
-    xmpp_roster_options = {}    # type: Dict[str, bool]
+    xmpp_roster_options = None  # type: Dict[str, bool]
 
     send_messages_to_all_chat = True    # type: bool
     send_presences_to_control = True    # type: bool
@@ -47,6 +41,18 @@ class BridgeBot:
         return self.matrix_login['username']
 
     def __init__(self, config_file: str=CONFIG_FILE):
+        self.groupchat_jids = []
+        self.topic_room_id_map = {}
+        self.special_rooms = {
+                'control': None,
+                'all_chat': None,
+                }
+        self.special_room_names = {
+                'control': 'XMPP Control Room',
+                'all_chat': 'XMPP All Chat',
+                }
+        self.xmpp_roster_options = {}
+
         self.load_config(config_file)
 
         self.matrix = MatrixClient(**self.matrix_server)
