@@ -24,6 +24,8 @@ class BridgeBot:
     topic_room_id_map = None   # type: Dict[str, str]
     special_rooms = None       # type: Dict[str, MatrixRoom]
     special_room_names = None  # type: Dict[str, str]
+    groupchat_flag = None      # type: str
+    groupchat_jids = None      # type: List[str]
 
     users_to_invite = None      # type: List[str]
     matrix_room_topics = None   # type: Dict[str, str]
@@ -32,9 +34,11 @@ class BridgeBot:
     xmpp_server = None          # type: Tuple[str, int]
     xmpp_login = None           # type: Dict[str, str]
     xmpp_roster_options = None  # type: Dict[str, bool]
+    xmpp_groupchat_nick = None  # type: str
 
     send_messages_to_all_chat = True    # type: bool
     send_presences_to_control = True    # type: bool
+    groupchat_mute_own_nick = True      # type: bool
 
     @property
     def bot_id(self) -> str:
@@ -69,6 +73,10 @@ class BridgeBot:
                 logging.debug('Recovering special room: ' + topic)
                 self.special_rooms[topic] = room
 
+            elif topic.startswith(self.groupchat_flag):
+                room_jid = topic[len(self.groupchat_flag):]
+                self.groupchat_jids.append(room_jid)
+
         for topic, room in self.special_rooms.items():
             if room is None:
                 room = self.matrix.create_room()
@@ -87,10 +95,16 @@ class BridgeBot:
         self.xmpp.add_event_handler('message', self.xmpp_message)
         self.xmpp.add_event_handler('presence_available', self.xmpp_presence_available)
         self.xmpp.add_event_handler('presence_unavailable', self.xmpp_presence_unavailable)
+        self.xmpp.add_event_handler('groupchat_message', self.xmpp_groupchat_message)
 
         # Connect to XMPP and start processing XMPP events
         self.xmpp.connect(self.xmpp_server)
         self.xmpp.process(block=False)
+
+        # Rejoin group chats
+        logging.debug('Rejoining group chats')
+        for room_jid in self.groupchat_jids:
+            self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
 
         logging.debug('Done with bot init')
 
@@ -100,15 +114,18 @@ class BridgeBot:
 
         self.users_to_invite = config['matrix']['users_to_invite']
         self.matrix_room_topics = config['matrix']['room_topics']
+        self.groupchat_flag = config['matrix']['groupchat_flag']
 
         self.matrix_server = config['matrix']['server']
         self.matrix_login = config['matrix']['login']
         self.xmpp_server = (config['xmpp']['server']['host'],
                             config['xmpp']['server']['port'])
         self.xmpp_login = config['xmpp']['login']
+        self.xmpp_groupchat_nick = config['xmpp']['groupchat_nick']
 
         self.send_presences_to_control = config['send_presences_to_control']
         self.send_messages_to_all_chat = config['send_messages_to_all_chat']
+        self.groupchat_mute_own_nick = config['groupchat_mute_own_nick']
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
 
@@ -167,7 +184,10 @@ class BridgeBot:
         :param name: (Optional) Name for the new room
         :return: Room which was created
         """
-        if topic in self.topic_room_id_map.keys():
+        if topic in self.groupchat_jids:
+            logging.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
+            return None
+        elif topic in self.topic_room_id_map.keys():
             room_id = self.topic_room_id_map[topic]
             room = self.matrix.get_rooms()[room_id]
             logging.debug('Room with topic {} already exists!'.format(topic))
@@ -210,6 +230,8 @@ class BridgeBot:
         Does nothing unless a valid command is received:
           refresh  Probes the presence of all XMPP contacts, and updates the roster.
           purge    Leaves any ((un-mapped and non-special) or empty) Matrix rooms.
+          joinmuc some@muc.com   Joins a muc
+          leavemuc some@muc.com  Leaves a muc
 
         :param room: Matrix room object representing the control room
         :param event: The Matrix event that was received. Assumed to be an m.room.message .
@@ -238,7 +260,22 @@ class BridgeBot:
                 # Leave from unwanted rooms
                 for room in self.get_unmapped_rooms() + self.get_empty_rooms():
                     logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
+                    if room.topic.startswith(self.groupchat_flag):
+                        room_jid = room.topic[len(self.groupchat_flag):]
+                        self.xmpp.plugin['xep_0045'].leaveMUC(room_jid)
                     room.leave()
+
+            elif message_parts[0] == 'joinmuc':
+                room_jid = message_parts[1]
+                logging.info('XMPP MUC join: {}'.format(room_jid))
+                self.create_groupchat_room(room_jid)
+                self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
+            elif message_parts[0] == 'leavemuc':
+                room_jid = message_parts[1]
+                logging.info('XMPP MUC leave: {}'.format(room_jid))
+                self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
+                room = self.get_room_for_jid(self.groupchat_flag + room_jid)
+                room.leave()
 
     def matrix_all_chat_message(self, room: MatrixRoom, event: Dict):
         """
@@ -277,12 +314,17 @@ class BridgeBot:
         if event['content']['msgtype'] == 'm.text':
             message_body = event['content']['body']
 
-            jid = room.topic
+            if room.topic.startswith(self.groupchat_flag):
+                jid = room.topic[len(self.groupchat_flag):]
+                message_type = 'groupchat'
+            else:
+                jid = room.topic
+                message_type = 'chat'
+
             name = self.xmpp.jid_nick_map[jid]
 
             logging.info('Matrix received message to {} : {}'.format(jid, message_body))
-
-            self.xmpp.send_message(mto=jid, mbody=message_body, mtype='chat')
+            self.xmpp.send_message(mto=jid, mbody=message_body, mtype=message_type)
 
             if self.send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_notice('To {} : {}'.format(name, message_body))
@@ -302,10 +344,45 @@ class BridgeBot:
             from_jid = message['from'].bare
             from_name = self.xmpp.jid_nick_map[from_jid]
 
+            if from_jid in self.groupchat_jids:
+                logging.warning('Normal chat message from a groupchat, ignoring...')
+                return
+
             room = self.get_room_for_jid(from_jid)
             room.send_text(message['body'])
             if self.send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_text('From {}: {}'.format(from_name, message['body']))
+
+    def xmpp_groupchat_message(self, message: Dict):
+        """
+        Handle a groupchat message received by the XMPP client.
+
+        Sends the message to the relevant mapped Matrix room, as well as the Matrix all-chat room.
+
+        :param message: The message that was received.
+        :return:
+        """
+        logging.info('XMPP MUC received {} : {}'.format(message['from'].full, message['body']))
+
+        if message['type'] == 'groupchat':
+            from_jid = message['from'].bare
+            from_name = message['mucnick']
+
+            if self.groupchat_mute_own_nick and from_name == self.xmpp_groupchat_nick:
+                return
+
+            room = self.get_room_for_jid(self.groupchat_flag + from_jid)
+            room.send_text(from_name + ': ' + message['body'])
+            if self.send_messages_to_all_chat:
+                self.special_rooms['all_chat'].send_text(
+                    'Room {}, from {}: {}'.format(from_jid, from_name, message['body']))
+
+    def create_groupchat_room(self, room_jid: str):
+        room = self.create_mapped_room(topic=self.groupchat_flag + room_jid)
+        if room_jid not in self.groupchat_jids:
+            self.groupchat_jids.append(room_jid)
+        for user_id in self.users_to_invite:
+            room.invite_user(user_id)
 
     def xmpp_presence_available(self, presence: Dict):
         """

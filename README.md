@@ -18,11 +18,13 @@ then invites a list of Matrix users (of your choosing) to all the rooms.
       to the room.
 * A room named "XMPP Control Room" is created
     - Presence info ("available" or "unavailable") is sent to this room
-    - Text command "purge" makes the bot leave from any rooms which do
+    - Text command ```purge``` makes the bot leave from any rooms which do
       not correspond to a roster entry (excluding the two special rooms),
       and also from any unoccupied rooms (eg. if the user left).
-    - Text command "refresh" probes the presence of all XMPP contacts
+    - Text command ```refresh``` probes the presence of all XMPP contacts
       and requests a roster update from the server.
+    - Text commands ```joinmuc room_jid@roomserver.com``` and ```leavemuc room_jid@roomserver.com```
+      allow you to join and leave multi-user chats.
 * A room named "XMPP All Chat" is created
     - All inbound and outbound chat messages are logged here.
     - The bot complains if you talk in here.
@@ -30,6 +32,13 @@ then invites a list of Matrix users (of your choosing) to all the rooms.
   room topics, and continues as before.
 * Currently, the bot automatically accepts anytime anyone asks to add
   you on XMPP, and also automatically adds them to your contact roster.
+* Multi-user chats (MUCs) are handled by creating additional rooms
+    - Room topic is set to "<groupchat>room_jid@roomserver.com"
+    - To join a MUC, send a message saying ```joinmuc room_jid@roomserver.com```
+      to the "XMPP Control Room"
+    - To leave a MUC, send a message saying ```leavemuc room_jid@roomserver.com```
+      to the "XMPP Control Room". Alternatively, leave the MUC room and send the message
+      ```purge``` instead.
 
 
 ## Installation

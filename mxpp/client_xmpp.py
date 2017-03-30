@@ -22,6 +22,7 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
         self.register_plugin('xep_0004')  # Data Forms
         self.register_plugin('xep_0060')  # PubSub
         self.register_plugin('xep_0199')  # XMPP Ping
+        self.register_plugin('xep_0045')  # Multi-User Chats (MUC)
 
         self.auto_authorize = auto_authorize
         self.auto_subscribe = auto_subscribe

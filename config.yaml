@@ -20,6 +20,12 @@ matrix:
     control:  'xmpp-bot-control'
     all_chat: 'xmpp-bot-all_chat'
 
+  # Groupchats will have a topic starting with this string.
+  #  Ideally, this should include some characters which are illegal in JIDs
+  #   (e.g. <>*&') so that it won't ever be confused for a JID
+  groupchat_flag: '<groupchat>'
+
+
 xmpp:
   server:
     host: talk.google.com
@@ -38,9 +44,13 @@ xmpp:
     # Automatically add and buddy who asks
     auto_subscribe: true
 
+  groupchat_nick: 'my_groupchat_name'
 
 # Send presence notices to the control channel
 send_presences_to_control: true
 
 # Send a copy of all messages to the all_chat channel
 send_messages_to_all_chat: true
+
+# Ignore any groupchat messages that were sent by our own nick
+groupchat_mute_own_nick: true
