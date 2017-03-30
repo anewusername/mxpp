@@ -159,24 +159,28 @@ class BridgeBot:
         logging.debug('Set up special room with topic {} and id'.format(
             str(room.topic), room.room_id))
 
-    def create_mapped_room(self, topic: str, name: str=None):
+    def create_mapped_room(self, topic: str, name: str=None) -> MatrixRoom or None:
         """
         Create a new room and add it to self.topic_room_id_map.
 
         :param topic: Topic for the new room
         :param name: (Optional) Name for the new room
+        :return: Room which was created
         """
         if topic in self.topic_room_id_map.keys():
+            room_id = self.topic_room_id_map[topic]
+            room = self.matrix.get_rooms()[room_id]
             logging.debug('Room with topic {} already exists!'.format(topic))
-            return
+        else:
+            room = self.matrix.create_room()
+            room.set_room_topic(topic)
+            self.topic_room_id_map[topic] = room
+            logging.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
 
-        room = self.matrix.create_room()
-        room.set_room_topic(topic)
-        if name is not None:
+        if room.name != name:
             room.set_room_name(name)
 
-        self.topic_room_id_map[topic] = room
-        logging.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
+        return room
 
     def map_rooms_by_topic(self):
         """
