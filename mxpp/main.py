@@ -364,6 +364,9 @@ class BridgeBot:
 
         # Create new rooms where none exist
         for jid, info in roster.items():
+            if '@' not in jid:
+                logging.warning('Skipping fake jid in roster: ' + jid)
+                continue
             name = info['name']
             self.xmpp.jid_nick_map[jid] = name
             self.create_mapped_room(topic=jid, name=name)
