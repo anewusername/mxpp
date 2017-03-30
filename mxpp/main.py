@@ -224,14 +224,15 @@ class BridgeBot:
             message_body = event['content']['body']
             logging.info('Matrix received control message: ' + message_body)
 
-            if message_body == 'refresh':
+            message_parts = message_body.split()
+            if message_parts[0] == 'refresh':
                 for jid in self.topic_room_id_map.keys():
                     self.xmpp.send_presence(pto=jid, ptype='probe')
 
                 self.xmpp.send_presence()
                 self.xmpp.get_roster()
 
-            elif message_body == 'purge':
+            elif message_parts[0] == 'purge':
                 self.special_rooms['control'].send_text('Purging unused rooms')
 
                 # Leave from unwanted rooms
