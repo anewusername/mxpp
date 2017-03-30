@@ -368,10 +368,13 @@ class BridgeBot:
             self.xmpp.jid_nick_map[jid] = name
             self.create_mapped_room(topic=jid, name=name)
 
+        logging.debug('Sending invitations..')
         # Invite to all rooms
-        for user_id in self.users_to_invite:
-            for room in self.matrix.get_rooms().values():
-                room.invite_user(user_id)
+        for room in self.matrix.get_rooms().values():
+            users_in_room = room.get_joined_members()
+            for user_id in self.users_to_invite:
+                if user_id not in users_in_room:
+                    room.invite_user(user_id)
 
         logging.debug('######## Done with roster update #######')
 
