@@ -125,14 +125,14 @@ class BridgeBot:
         self.users_to_invite = config['matrix']['users_to_invite']
         self.matrix_room_topics = config['matrix']['room_topics']
         self.groupchat_flag = config['matrix']['groupchat_flag']
-        if 'restore_room_topic' in config['matrix']:
+        if 'restore_room_topic' in config['matrix']: #to be compatible to other config files
             self.restore_room_topic = config['matrix']['restore_room_topic']
 
         self.matrix_server = config['matrix']['server']
         self.matrix_login = config['matrix']['login']
         self.xmpp_server = (config['xmpp']['server']['host'],
                             config['xmpp']['server']['port'])
-        self.xmpp_login = config['xmpp']['login'] #to be compatible to other config files
+        self.xmpp_login = config['xmpp']['login']
         self.xmpp_groupchat_nick = config['xmpp']['groupchat_nick']
 
         self.send_presences_to_control = config['send_presences_to_control']
