@@ -26,6 +26,7 @@ class BridgeBot:
     special_room_names = None  # type: Dict[str, str]
     groupchat_flag = None      # type: str
     groupchat_jids = None      # type: List[str]
+    restore_room_topic = True  #type: bool
 
     users_to_invite = None      # type: List[str]
     matrix_room_topics = None   # type: Dict[str, str]
@@ -37,6 +38,7 @@ class BridgeBot:
     xmpp_groupchat_nick = None  # type: str
 
     send_messages_to_all_chat = True    # type: bool
+    disable_all_chat_room = False       # type: bool
     send_presences_to_control = True    # type: bool
     groupchat_mute_own_nick = True      # type: bool
 
@@ -64,6 +66,13 @@ class BridgeBot:
 
         self.matrix.login_with_password(**self.matrix_login)
 
+        if self.disable_all_chat_room:
+            self.send_messages_to_all_chat = False #should not be necessary (see load_config)
+            if 'all_chat' in self.special_rooms:
+                del self.special_rooms['all_chat']
+            if 'all_chat' in self.special_room_names:
+                del self.special_room_names['all_chat']
+
         # Prepare matrix special channels and their listeners
         for room in self.matrix.get_rooms().values():
             room.update_room_topic()
@@ -83,7 +92,8 @@ class BridgeBot:
             self.setup_special_room(room, topic)
 
         self.special_rooms['control'].add_listener(self.matrix_control_message, 'm.room.message')
-        self.special_rooms['all_chat'].add_listener(self.matrix_all_chat_message, 'm.room.message')
+        if not self.disable_all_chat_room:
+            self.special_rooms['all_chat'].add_listener(self.matrix_all_chat_message, 'm.room.message')
 
         # Invite users to special rooms
         for room in self.special_rooms.values():
@@ -115,16 +125,22 @@ class BridgeBot:
         self.users_to_invite = config['matrix']['users_to_invite']
         self.matrix_room_topics = config['matrix']['room_topics']
         self.groupchat_flag = config['matrix']['groupchat_flag']
+        if 'restore_room_topic' in config['matrix']:
+            self.restore_room_topic = config['matrix']['restore_room_topic']
 
         self.matrix_server = config['matrix']['server']
         self.matrix_login = config['matrix']['login']
         self.xmpp_server = (config['xmpp']['server']['host'],
                             config['xmpp']['server']['port'])
-        self.xmpp_login = config['xmpp']['login']
+        self.xmpp_login = config['xmpp']['login'] #to be compatible to other config files
         self.xmpp_groupchat_nick = config['xmpp']['groupchat_nick']
 
         self.send_presences_to_control = config['send_presences_to_control']
         self.send_messages_to_all_chat = config['send_messages_to_all_chat']
+        if not self.send_messages_to_all_chat and 'disable_all_chat_room' in config:
+            self.disable_all_chat_room = config['disable_all_chat_room']
+        else:
+            self.disable_all_chat_room = False
         self.groupchat_mute_own_nick = config['groupchat_mute_own_nick']
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
@@ -184,6 +200,9 @@ class BridgeBot:
         :param name: (Optional) Name for the new room
         :return: Room which was created
         """
+        if not name: #room without name is shown as the bot's name in riot -> not nice
+            name = topic
+
         if topic in self.groupchat_jids:
             logging.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
             return None
@@ -196,8 +215,11 @@ class BridgeBot:
             room.set_room_topic(topic)
             self.topic_room_id_map[topic] = room
             logging.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
+            room.set_room_name(name)
 
-        if room.name != name:
+        room.update_room_name() #room.name is not set automatically in all cases
+
+        if self.restore_room_topic and room.name != name:
             room.set_room_name(name)
 
         return room
@@ -247,35 +269,39 @@ class BridgeBot:
             logging.info('Matrix received control message: ' + message_body)
 
             message_parts = message_body.split()
-            if message_parts[0] == 'refresh':
-                for jid in self.topic_room_id_map.keys():
-                    self.xmpp.send_presence(pto=jid, ptype='probe')
+            if len(message_parts) > 0:
+                message_parts[0] = message_parts[0].lower()
+                # what about a empty body?
+                if message_parts[0] == 'refresh':
+                    for jid in self.topic_room_id_map.keys():
+                        self.xmpp.send_presence(pto=jid, ptype='probe')
 
-                self.xmpp.send_presence()
-                self.xmpp.get_roster()
+                    self.xmpp.send_presence()
+                    self.xmpp.get_roster()
 
-            elif message_parts[0] == 'purge':
-                self.special_rooms['control'].send_text('Purging unused rooms')
+                elif message_parts[0] == 'purge':
+                    self.special_rooms['control'].send_text('Purging unused rooms')
 
-                # Leave from unwanted rooms
-                for room in self.get_unmapped_rooms() + self.get_empty_rooms():
-                    logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
-                    if room.topic.startswith(self.groupchat_flag):
-                        room_jid = room.topic[len(self.groupchat_flag):]
-                        self.xmpp.plugin['xep_0045'].leaveMUC(room_jid)
-                    room.leave()
+                    # Leave from unwanted rooms
+                    for room in self.get_unmapped_rooms() + self.get_empty_rooms():
+                        logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
+                        if room.topic.startswith(self.groupchat_flag):
+                            room_jid = room.topic[len(self.groupchat_flag):]
+                            self.xmpp.plugin['xep_0045'].leaveMUC(room_jid)
+                        room.leave()
 
-            elif message_parts[0] == 'joinmuc':
-                room_jid = message_parts[1]
-                logging.info('XMPP MUC join: {}'.format(room_jid))
-                self.create_groupchat_room(room_jid)
-                self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
-            elif message_parts[0] == 'leavemuc':
-                room_jid = message_parts[1]
-                logging.info('XMPP MUC leave: {}'.format(room_jid))
-                self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
-                room = self.get_room_for_jid(self.groupchat_flag + room_jid)
-                room.leave()
+                elif len(message_parts) > 1:
+                    if message_parts[0] == 'joinmuc':
+                        room_jid = message_parts[1]
+                        logging.info('XMPP MUC join: {}'.format(room_jid))
+                        self.create_groupchat_room(room_jid)
+                        self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
+                    elif message_parts[0] == 'leavemuc':
+                        room_jid = message_parts[1]
+                        logging.info('XMPP MUC leave: {}'.format(room_jid))
+                        self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
+                        room = self.get_room_for_jid(self.groupchat_flag + room_jid)
+                        room.leave()
 
     def matrix_all_chat_message(self, room: MatrixRoom, event: Dict):
         """
