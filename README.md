@@ -9,8 +9,8 @@
 * set roomname to topic if roomname is not defined
 * option to preserve changed name of room
 
-next: option to define a list of xmpp users which won't be mapped to a matrix room
-then: pull request to anewusername
+* next: option to define a list of xmpp users which won't be mapped to a matrix room.
+* then: pull request to anewusername
 
 ## original readme by anewusername
 
