@@ -19,28 +19,30 @@ logging.getLogger(requests.__name__).setLevel(logging.ERROR)
 
 
 class BridgeBot:
-    xmpp = None                # type: ClientXMPP
-    matrix = None              # type: MatrixClient
-    topic_room_id_map = None   # type: Dict[str, str]
-    special_rooms = None       # type: Dict[str, MatrixRoom]
-    special_room_names = None  # type: Dict[str, str]
-    groupchat_flag = None      # type: str
-    groupchat_jids = None      # type: List[str]
-    restore_room_topic = True  #type: bool
+    xmpp = None                        # type: ClientXMPP
+    matrix = None                      # type: MatrixClient
+    topic_room_id_map = None           # type: Dict[str, str]
+    special_rooms = None               # type: Dict[str, MatrixRoom]
+    special_room_names = None          # type: Dict[str, str]
+    groupchat_flag = None              # type: str
+    groupchat_jids = None              # type: List[str]
+    restore_room_topic = True          # type: bool
 
-    users_to_invite = None      # type: List[str]
-    matrix_room_topics = None   # type: Dict[str, str]
-    matrix_server = None        # type: Dict[str, str]
-    matrix_login = None         # type: Dict[str, str]
-    xmpp_server = None          # type: Tuple[str, int]
-    xmpp_login = None           # type: Dict[str, str]
-    xmpp_roster_options = None  # type: Dict[str, bool]
-    xmpp_groupchat_nick = None  # type: str
+    users_to_invite = None             # type: List[str]
+    matrix_room_topics = None          # type: Dict[str, str]
+    matrix_server = None               # type: Dict[str, str]
+    matrix_login = None                # type: Dict[str, str]
+    xmpp_server = None                 # type: Tuple[str, int]
+    xmpp_login = None                  # type: Dict[str, str]
+    xmpp_roster_options = None         # type: Dict[str, bool]
+    xmpp_groupchat_nick = None         # type: str
 
-    send_messages_to_all_chat = True    # type: bool
-    disable_all_chat_room = False       # type: bool
-    send_presences_to_control = True    # type: bool
-    groupchat_mute_own_nick = True      # type: bool
+    send_messages_to_all_chat = True   # type: bool
+    disable_all_chat_room = False      # type: bool
+    send_presences_to_control = True   # type: bool
+    groupchat_mute_own_nick = True     # type: bool
+
+    disabled_jids = set()             # type: Set[str]
 
     @property
     def bot_id(self) -> str:
@@ -125,7 +127,7 @@ class BridgeBot:
         self.users_to_invite = config['matrix']['users_to_invite']
         self.matrix_room_topics = config['matrix']['room_topics']
         self.groupchat_flag = config['matrix']['groupchat_flag']
-        if 'restore_room_topic' in config['matrix']: #to be compatible to other config files
+        if 'restore_room_topic' in config['matrix']: # to be compatible to other config files
             self.restore_room_topic = config['matrix']['restore_room_topic']
 
         self.matrix_server = config['matrix']['server']
@@ -141,9 +143,16 @@ class BridgeBot:
             self.disable_all_chat_room = config['disable_all_chat_room']
         else:
             self.disable_all_chat_room = False
+
         self.groupchat_mute_own_nick = config['groupchat_mute_own_nick']
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
+
+        if 'disabled_jids' in config:
+            self.disabled_jids = set(config['disabled_jids'])
+            if 'xmpp_login_jid' in self.disabled_jids:
+                self.disabled_jids.add(self.xmpp_login['jid'])
+                self.disabled_jids.remove('xmpp_login_jid')
 
     def get_room_for_jid(self, jid: str) -> MatrixRoom:
         """
@@ -421,6 +430,9 @@ class BridgeBot:
         logging.debug('XMPP received {} : (available)'.format(presence['from'].full))
 
         jid = presence['from'].bare
+        if jid in self.disabled_jids:
+            return
+
         if jid not in self.xmpp.jid_nick_map.keys():
             logging.error('JID NOT IN ROSTER!?')
             self.xmpp.get_roster()
@@ -440,8 +452,11 @@ class BridgeBot:
         """
         logging.debug('XMPP received {} : (unavailable)'.format(presence['from'].full))
 
+        jid = presence['from'].bare
+        if jid in self.disabled_jids:
+            return
+
         if self.send_presences_to_control:
-            jid = presence['from'].bare
             name = self.xmpp.jid_nick_map[jid]
             self.special_rooms['control'].send_notice('{} unavailable ({})'.format(name, jid))
 
@@ -470,6 +485,8 @@ class BridgeBot:
         for jid, info in roster.items():
             if '@' not in jid:
                 logging.warning('Skipping fake jid in roster: ' + jid)
+                continue
+            if jid in self.disabled_jids:
                 continue
             name = info['name']
             self.xmpp.jid_nick_map[jid] = name
