@@ -60,3 +60,7 @@ disable_all_chat_room: true
 
 # Ignore any groupchat messages that were sent by our own nick
 groupchat_mute_own_nick: true
+
+# do not connect to following xmpp users; value xmpp_login_jid is also allowed and would be replaced with the xmpp login jid
+disabled_jids:
+  - xmpp_login_jid
