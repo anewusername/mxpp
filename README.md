@@ -8,6 +8,7 @@
 * add option to disable all_chat room completely
 * set roomname to topic if roomname is not defined
 * option to preserve changed name of room
+* option to define a list of xmpp users which won't be mapped to a matrix room (disabled_jid)
 
 * next: option to define a list of xmpp users which won't be mapped to a matrix room.
 * then: pull request to anewusername
