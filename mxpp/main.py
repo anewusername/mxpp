@@ -209,7 +209,7 @@ class BridgeBot:
         :param name: (Optional) Name for the new room
         :return: Room which was created
         """
-        if not name: #room without name is shown as the bot's name in riot -> not nice
+        if not name: #room without name is shown as the bot's name in clients like riot
             name = topic
 
         if topic in self.groupchat_jids:
