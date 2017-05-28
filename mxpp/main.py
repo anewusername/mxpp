@@ -199,7 +199,10 @@ class BridgeBot:
             room.add_listener(self.matrix_message, 'm.room.message')
 
         if room.name != name:
-            room.set_room_name(name)
+            if name != "":
+                room.set_room_name(name)
+            else:
+                room.set_room_name(topic.split('@')[0])
 
         return room
 
