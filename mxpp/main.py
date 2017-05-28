@@ -64,7 +64,6 @@ class BridgeBot:
 
         self.matrix.login_with_password(**self.matrix_login)
 
-        # Prepare matrix special channels and their listeners
         for room in self.matrix.get_rooms().values():
             room.update_room_topic()
             topic = room.topic
@@ -77,6 +76,7 @@ class BridgeBot:
                 room_jid = topic[len(self.groupchat_flag):]
                 self.groupchat_jids.append(room_jid)
 
+        # Prepare matrix special channels and their listeners
         for topic, room in self.special_rooms.items():
             if room is None:
                 room = self.matrix.create_room()
