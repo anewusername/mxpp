@@ -206,6 +206,36 @@ class BridgeBot:
 
         return room
 
+    def leave_mapped_room(self, topic: str) -> bool:
+        """
+        Leave an existing, mapped room and remove it from self.topic_room_id_map.
+
+        :param topic: Topic for room to leave
+        :retrun: True if the room was left, False if the room was not found.
+        """
+        if topic in self.groupchat_jids:
+            logging.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
+            return False
+
+        if topic not in self.topic_room_id_map.keys():
+            err_msg = 'Room with topic {} isn\'t mapped or doesn\'t exist'.format(topic)
+            logging.warning(err_msg)
+            return False
+
+        if topic.startswith(self.groupchat_flag):
+            # Leave the groupchat
+            room_jid = topic[len(self.groupchat_flag):]
+            if room_jid in self.groupchat_jids:
+                self.groupchat_jids.remove(room_jid)
+            logging.info('XMPP MUC leave: {}'.format(room_jid))
+            self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
+
+        room = self.get_room_for_topic(topic)
+        del self.topic_room_id_map[topic]
+        room.leave()
+        logging.info('Left mapped room with topic {}'.format(topic))
+        return True
+
     def map_rooms_by_topic(self):
         """
         Add unmapped rooms to self.topic_room_id_map, and listen to messages from those rooms.
