@@ -129,7 +129,7 @@ class BridgeBot:
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
 
-    def get_room_for_jid(self, jid: str) -> MatrixRoom:
+    def get_room_for_topic(self, jid: str) -> MatrixRoom:
         """
         Return the room corresponding to the given XMPP JID
         :param jid: bare XMPP JID, should not include the resource
@@ -382,7 +382,7 @@ class BridgeBot:
                 logging.warning('Normal chat message from a groupchat, ignoring...')
                 return
 
-            room = self.get_room_for_jid(from_jid)
+            room = self.get_room_for_topic(from_jid)
             room.send_text(message['body'])
             if self.send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_text('From {}: {}'.format(from_name, message['body']))
@@ -405,7 +405,7 @@ class BridgeBot:
             if self.groupchat_mute_own_nick and from_name == self.xmpp_groupchat_nick:
                 return
 
-            room = self.get_room_for_jid(self.groupchat_flag + from_jid)
+            room = self.get_room_for_topic(self.groupchat_flag + from_jid)
             room.send_text(from_name + ': ' + message['body'])
             if self.send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_text(
