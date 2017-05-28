@@ -430,7 +430,7 @@ class BridgeBot:
 
         jid = presence['from'].bare
         if jid not in self.xmpp.jid_nick_map.keys():
-            logging.error('JID NOT IN ROSTER!?')
+            logging.error('JID {} NOT IN ROSTER!?'.format(jid))
             self.xmpp.get_roster()
             return
 
