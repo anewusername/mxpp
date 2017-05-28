@@ -294,10 +294,11 @@ class BridgeBot:
                 # Leave from unwanted rooms
                 for room in self.get_unmapped_rooms() + self.get_empty_rooms():
                     logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
-                    if room.topic.startswith(self.groupchat_flag):
-                        room_jid = room.topic[len(self.groupchat_flag):]
-                        self.xmpp.plugin['xep_0045'].leaveMUC(room_jid)
-                    room.leave()
+
+                    if room.topic in self.topic_room_id_map.keys():
+                        self.leave_mapped_room(room.topic)
+                    else:
+                        room.leave()
 
             elif message_parts[0] == 'joinmuc':
                 room_jid = message_parts[1]
@@ -305,11 +306,16 @@ class BridgeBot:
                 self.create_groupchat_room(room_jid)
                 self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
             elif message_parts[0] == 'leavemuc':
+
                 room_jid = message_parts[1]
-                logging.info('XMPP MUC leave: {}'.format(room_jid))
-                self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
-                room = self.get_room_for_jid(self.groupchat_flag + room_jid)
-                room.leave()
+                room_topic = self.groupchat_flag + room_jid
+
+                success = self.leave_mapped_room(room_topic)
+                if not success:
+                    msg = 'Groupchat {} isn\'t mapped or doesn\'t exist'.format(room_jid)
+                else:
+                    msg = 'Left groupchat {}'.format(room_jid)
+                self.special_rooms['control'].send_notice(msg)
 
     def matrix_all_chat_message(self, room: MatrixRoom, event: Dict):
         """
