@@ -281,10 +281,13 @@ class BridgeBot:
             logging.info('Matrix received control message: ' + message_body)
 
             message_parts = message_body.split()
+            if len(message_parts) < 1:
+                logging.warning('Received empty control message, ignoring')
+                return
+
             if message_parts[0] == 'refresh':
                 for jid in self.topic_room_id_map.keys():
                     self.xmpp.send_presence(pto=jid, ptype='probe')
-
                 self.xmpp.send_presence()
                 self.xmpp.get_roster()
 
@@ -301,11 +304,19 @@ class BridgeBot:
                         room.leave()
 
             elif message_parts[0] == 'joinmuc':
+                if len(message_parts) < 2:
+                    logging.warning('joinmuc command didn\'t specify a room, ignoring')
+                    return
+
                 room_jid = message_parts[1]
                 logging.info('XMPP MUC join: {}'.format(room_jid))
                 self.create_groupchat_room(room_jid)
                 self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
+
             elif message_parts[0] == 'leavemuc':
+                if len(message_parts) < 2:
+                    logging.warning('leavemuc command didn\'t specify a room, ignoring')
+                    return
 
                 room_jid = message_parts[1]
                 room_topic = self.groupchat_flag + room_jid
