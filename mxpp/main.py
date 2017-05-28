@@ -254,7 +254,6 @@ class BridgeBot:
                 logging.debug('Leaving it as-is (special room, topic does not contain @)')
             else:
                 self.topic_room_id_map[room.topic] = room.room_id
-
                 room.add_listener(self.matrix_message, 'm.room.message')
 
     def matrix_control_message(self, room: MatrixRoom, event: Dict):
