@@ -194,8 +194,9 @@ class BridgeBot:
         else:
             room = self.matrix.create_room()
             room.set_room_topic(topic)
-            self.topic_room_id_map[topic] = room
+            self.topic_room_id_map[topic] = room.room_id
             logging.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
+            room.add_listener(self.matrix_message, 'm.room.message')
 
         if room.name != name:
             room.set_room_name(name)
