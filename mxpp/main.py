@@ -12,7 +12,7 @@ from mxpp.client_xmpp import ClientXMPP
 
 CONFIG_FILE = 'config.yaml'
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(levelname)-8s %(message)s')
 logging.getLogger(sleekxmpp.__name__).setLevel(logging.ERROR)
 logging.getLogger(requests.__name__).setLevel(logging.ERROR)
