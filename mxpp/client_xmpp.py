@@ -49,5 +49,5 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
 
         logging.info('XMPP Logged in!')
 
-    def disconnected(self):
+    def disconnected(self, _event):
         logging.info('XMPP Disconnected!')
