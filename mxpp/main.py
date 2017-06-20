@@ -371,10 +371,16 @@ class BridgeBot:
                 jid = room.topic
                 message_type = 'chat'
 
-            name = self.xmpp.jid_nick_map[jid]
-
             logging.info('Matrix received message to {} : {}'.format(jid, message_body))
             self.xmpp.send_message(mto=jid, mbody=message_body, mtype=message_type)
+
+            # Possible that we're in a room that wasn't mapped
+            if jid in self.xmpp.jid_nick_map:
+                name = self.xmpp.jid_nick_map[jid]
+            else:
+                logging.error('Received message in matrix room with topic {},'.format(jid) +
+                              'which wasn\'t in the jid_nick_map')
+                name = jid
 
             if self.send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_notice('To {} : {}'.format(name, message_body))
@@ -392,6 +398,11 @@ class BridgeBot:
 
         if message['type'] in ('normal', 'chat'):
             from_jid = message['from'].bare
+
+            if from_jid not in self.xmpp.jid_nick_map.keys():
+                logging.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(jid))
+                self.xmpp.get_roster(block=True)
+
             from_name = self.xmpp.jid_nick_map[from_jid]
 
             if from_jid in self.groupchat_jids:
@@ -446,9 +457,8 @@ class BridgeBot:
 
         jid = presence['from'].bare
         if jid not in self.xmpp.jid_nick_map.keys():
-            logging.error('JID {} NOT IN ROSTER!?'.format(jid))
-            self.xmpp.get_roster()
-            return
+            logging.error('xmpp_presence_available: JID {} NOT IN ROSTER!?'.format(jid))
+            self.xmpp.get_roster(block=True)
 
         if self.send_presences_to_control:
             name = self.xmpp.jid_nick_map[jid]
@@ -464,8 +474,12 @@ class BridgeBot:
         """
         logging.debug('XMPP received {} : (unavailable)'.format(presence['from'].full))
 
+        jid = presence['from'].bare
+        if jid not in self.xmpp.jid_nick_map.keys():
+            logging.error('xmpp_presence_unavailable: JID {} NOT IN ROSTER!?'.format(jid))
+            self.xmpp.get_roster(block=True)
+
         if self.send_presences_to_control:
-            jid = presence['from'].bare
             name = self.xmpp.jid_nick_map[jid]
             self.special_rooms['control'].send_notice('{} unavailable ({})'.format(name, jid))
 
