@@ -37,7 +37,7 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
                 self.disconnect()
 
             try:
-                self.get_roster()
+                self.get_roster(block=True)
             except IqError as err:
                 logging.error('There was an error getting the roster')
                 logging.error(err.iq['error']['condition'])
