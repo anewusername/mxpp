@@ -152,6 +152,7 @@ class BridgeBot:
 
             handler(event)
         raise self.exception
+
     def load_config(self, path: str):
         with open(path, 'r') as conf_file:
             config = yaml.load(conf_file)
@@ -245,6 +246,7 @@ class BridgeBot:
         if room.name != name:
             if name != "":
                 room.set_room_name(name)
+                room.set_user_profile(displayname=name)
             else:
                 room.set_room_name(topic.split('@')[0])
 
