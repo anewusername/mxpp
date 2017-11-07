@@ -1,11 +1,13 @@
 import logging
 from typing import Dict, Tuple, List
 import sys
+from queue import Queue
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 5:
     raise Exception('mxpp requires python >= 3.5')
 
 import sleekxmpp
+from sleekxmpp import stanza
 import requests
 import yaml
 
@@ -46,6 +48,10 @@ class BridgeBot:
     send_presences_to_control = True    # type: bool
     groupchat_mute_own_nick = True      # type: bool
 
+    inbound_xmpp = None         # type: Queue
+
+    exception = None            # type: Exception or None
+
     @property
     def bot_id(self) -> str:
         return self.matrix_login['username']
@@ -62,14 +68,18 @@ class BridgeBot:
                 'all_chat': 'XMPP All Chat',
                 }
         self.xmpp_roster_options = {}
+        self.inbound_xmpp = Queue()
 
         self.load_config(config_file)
 
         self.matrix = MatrixClient(**self.matrix_server)
-        self.xmpp = ClientXMPP(**self.xmpp_login, **self.xmpp_roster_options)
+        self.xmpp = ClientXMPP(self.inbound_xmpp,
+                               **self.xmpp_login,
+                               **self.xmpp_roster_options)
 
         self.matrix.login_with_password(**self.matrix_login)
 
+        # Recover existing matrix rooms
         for room in self.matrix.get_rooms().values():
             room.update_room_topic()
             topic = room.topic
@@ -82,7 +92,7 @@ class BridgeBot:
                 room_jid = topic[len(self.groupchat_flag):]
                 self.groupchat_jids.append(room_jid)
 
-        # Prepare matrix special channels and their listeners
+        # Prepare matrix special rooms and their listeners
         for topic, room in self.special_rooms.items():
             if room is None:
                 room = self.matrix.create_room()
@@ -96,13 +106,6 @@ class BridgeBot:
             for user_id in self.users_to_invite:
                 room.invite_user(user_id)
 
-        # Prepare xmpp listeners
-        self.xmpp.add_event_handler('roster_update', self.xmpp_roster_update)
-        self.xmpp.add_event_handler('message', self.xmpp_message)
-        self.xmpp.add_event_handler('presence_available', self.xmpp_presence_available)
-        self.xmpp.add_event_handler('presence_unavailable', self.xmpp_presence_unavailable)
-        self.xmpp.add_event_handler('groupchat_message', self.xmpp_groupchat_message)
-
         # Connect to XMPP and start processing XMPP events
         self.xmpp.connect(self.xmpp_server)
         self.xmpp.process(block=False)
@@ -112,9 +115,43 @@ class BridgeBot:
         for room_jid in self.groupchat_jids:
             self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
 
+        # Listen for Matrix events
+        def exception_handler(e: Exception):
+            self.exception = e
+
+        self.matrix.start_listener_thread(exception_handler=exception_handler)
 
         logger.debug('Done with bot init')
 
+    def shutdown(self):
+        self.matrix.stop_listener_thread()
+        self.xmpp.disconnect()
+
+    def handle_inbound_xmpp(self):
+        while self.exception is None:
+            event = self.inbound_xmpp.get()
+
+            if isinstance(event, sleekxmpp.Presence):
+                handler = {
+                        'available': self.xmpp_presence_available,
+                        'unavailable': self.xmpp_presence_unavailable,
+                }.get(event.get_type(), self.xmpp_unrecognized_event)
+
+            elif isinstance(event, sleekxmpp.Message):
+                handler = {
+                        'normal': self.xmpp_message,
+                        'chat': self.xmpp_message,
+                        'groupchat': self.xmpp_groupchat_message,
+                }.get(event.get_type(), self.xmpp_unrecognized_event)
+
+            elif isinstance(event, sleekxmpp.Iq) and event.get_query() == 'jabber:iq:roster':
+                handler = self.xmpp_roster_update
+
+            else:
+                handler = self.xmpp_unrecognized_event
+
+            handler(event)
+        raise self.exception
     def load_config(self, path: str):
         with open(path, 'r') as conf_file:
             config = yaml.load(conf_file)
@@ -528,13 +565,17 @@ class BridgeBot:
 
         logger.debug('######## Done with roster update #######')
 
+    def xmpp_unrecognized_event(self, event):
+        logger.error('Unrecognized event: {} || {}'.format(type(event), event))
+
 
 def main():
     while True:
         try:
             bot = BridgeBot()
-            bot.matrix.listen_forever()
-        except MatrixError as e:
+            bot.handle_inbound_xmpp()
+        except Exception as e:
+            bot.shutdown()
             logger.error('Fatal Exception: {}'.format(e))
             pass
 
