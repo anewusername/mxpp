@@ -445,11 +445,11 @@ class BridgeBot:
                 logger.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
                 self.xmpp.get_roster(block=True)
 
-            from_name = self.xmpp.jid_nick_map.get(from_jid, from_jid)
-
             if from_jid in self.groupchat_jids:
                 logger.warning('Normal chat message from a groupchat, ignoring...')
                 return
+
+            from_name = self.xmpp.jid_nick_map.get(from_jid, from_jid)
 
             room = self.get_room_for_topic(from_jid)
             room.send_text(message['body'])
