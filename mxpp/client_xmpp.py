@@ -3,6 +3,8 @@ import logging
 import sleekxmpp
 from sleekxmpp.exceptions import IqError, IqTimeout
 
+logger = logging.getLogger(__name__)
+
 
 class ClientXMPP(sleekxmpp.ClientXMPP):
     roster_dict = {}
@@ -32,22 +34,22 @@ class ClientXMPP(sleekxmpp.ClientXMPP):
             try:
                 self.send_presence()
             except IqError as err:
-                logging.error('There was an error sending presence')
-                logging.error(err.iq['error']['condition'])
+                logger.error('There was an error sending presence')
+                logger.error(err.iq['error']['condition'])
                 self.disconnect()
 
             try:
                 self.get_roster(block=True)
             except IqError as err:
-                logging.error('There was an error getting the roster')
-                logging.error(err.iq['error']['condition'])
+                logger.error('There was an error getting the roster')
+                logger.error(err.iq['error']['condition'])
                 self.disconnect()
 
         except IqTimeout:
-            logging.error('Server is taking too long to respond')
+            logger.error('Server is taking too long to respond')
             self.disconnect()
 
-        logging.info('XMPP Logged in!')
+        logger.info('XMPP Logged in!')
 
     def disconnected(self, _event):
-        logging.info('XMPP Disconnected!')
+        logger.info('XMPP Disconnected!')

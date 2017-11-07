@@ -17,6 +17,8 @@ logging.basicConfig(level=logging.INFO,
 logging.getLogger(sleekxmpp.__name__).setLevel(logging.ERROR)
 logging.getLogger(requests.__name__).setLevel(logging.ERROR)
 
+logger = logging.getLogger(__name__)
+
 
 class BridgeBot:
     xmpp = None                # type: ClientXMPP
@@ -69,7 +71,7 @@ class BridgeBot:
             topic = room.topic
 
             if topic in self.special_rooms.keys():
-                logging.debug('Recovering special room: ' + topic)
+                logger.debug('Recovering special room: ' + topic)
                 self.special_rooms[topic] = room
 
             elif topic.startswith(self.groupchat_flag):
@@ -102,11 +104,12 @@ class BridgeBot:
         self.xmpp.process(block=False)
 
         # Rejoin group chats
-        logging.debug('Rejoining group chats')
+        logger.debug('Rejoining group chats')
         for room_jid in self.groupchat_jids:
             self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
 
-        logging.debug('Done with bot init')
+
+        logger.debug('Done with bot init')
 
     def load_config(self, path: str):
         with open(path, 'r') as conf_file:
@@ -173,7 +176,7 @@ class BridgeBot:
         room.set_room_name(self.special_room_names[topic])
         self.special_rooms[topic] = room
 
-        logging.debug('Set up special room with topic {} and id'.format(
+        logger.debug('Set up special room with topic {} and id'.format(
             str(room.topic), room.room_id))
 
     def create_mapped_room(self, topic: str, name: str=None) -> MatrixRoom or None:
@@ -185,17 +188,17 @@ class BridgeBot:
         :return: Room which was created
         """
         if topic in self.groupchat_jids:
-            logging.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
+            logger.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
             return None
         elif topic in self.topic_room_id_map.keys():
             room_id = self.topic_room_id_map[topic]
             room = self.matrix.get_rooms()[room_id]
-            logging.debug('Room with topic {} already exists!'.format(topic))
+            logger.debug('Room with topic {} already exists!'.format(topic))
         else:
             room = self.matrix.create_room()
             room.set_room_topic(topic)
             self.topic_room_id_map[topic] = room.room_id
-            logging.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
+            logger.info('Created mapped room with topic {} and id {}'.format(topic, str(room.room_id)))
             room.add_listener(self.matrix_message, 'm.room.message')
 
         if room.name != name:
@@ -214,12 +217,12 @@ class BridgeBot:
         :retrun: True if the room was left, False if the room was not found.
         """
         if topic in self.groupchat_jids:
-            logging.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
+            logger.debug('Topic {} is a groupchat without its flag, ignoring'.format(topic))
             return False
 
         if topic not in self.topic_room_id_map.keys():
             err_msg = 'Room with topic {} isn\'t mapped or doesn\'t exist'.format(topic)
-            logging.warning(err_msg)
+            logger.warning(err_msg)
             return False
 
         if topic.startswith(self.groupchat_flag):
@@ -227,13 +230,13 @@ class BridgeBot:
             room_jid = topic[len(self.groupchat_flag):]
             if room_jid in self.groupchat_jids:
                 self.groupchat_jids.remove(room_jid)
-            logging.info('XMPP MUC leave: {}'.format(room_jid))
+            logger.info('XMPP MUC leave: {}'.format(room_jid))
             self.xmpp.plugin['xep_0045'].leaveMUC(room_jid, self.xmpp_groupchat_nick)
 
         room = self.get_room_for_topic(topic)
         del self.topic_room_id_map[topic]
         room.leave()
-        logging.info('Left mapped room with topic {}'.format(topic))
+        logger.info('Left mapped room with topic {}'.format(topic))
         return True
 
     def map_rooms_by_topic(self):
@@ -248,10 +251,10 @@ class BridgeBot:
         for room in unmapped_rooms:
             room.update_room_topic()
 
-            logging.debug('Unmapped room {} ({}) [{}]'.format(room.room_id, room.name, room.topic))
+            logger.debug('Unmapped room {} ({}) [{}]'.format(room.room_id, room.name, room.topic))
 
             if room.topic is None or '@' not in room.topic:
-                logging.debug('Leaving it as-is (special room, topic does not contain @)')
+                logger.debug('Leaving it as-is (special room, topic does not contain @)')
             else:
                 self.topic_room_id_map[room.topic] = room.room_id
                 room.add_listener(self.matrix_message, 'm.room.message')
@@ -273,15 +276,15 @@ class BridgeBot:
         if event['sender'] == self.bot_id:
             return
 
-        logging.debug('matrix_control_message: {}  {}'.format(room.room_id, str(event)))
+        logger.debug('matrix_control_message: {}  {}'.format(room.room_id, str(event)))
 
         if event['content']['msgtype'] == 'm.text':
             message_body = event['content']['body']
-            logging.info('Matrix received control message: ' + message_body)
+            logger.info('Matrix received control message: ' + message_body)
 
             message_parts = message_body.split()
             if len(message_parts) < 1:
-                logging.warning('Received empty control message, ignoring')
+                logger.warning('Received empty control message, ignoring')
                 return
 
             if message_parts[0] == 'refresh':
@@ -295,7 +298,7 @@ class BridgeBot:
 
                 # Leave from unwanted rooms
                 for room in self.get_unmapped_rooms() + self.get_empty_rooms():
-                    logging.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
+                    logger.info('Leaving room {r.room_id} ({r.name}) [{r.topic}]'.format(r=room))
 
                     if room.topic in self.topic_room_id_map.keys():
                         self.leave_mapped_room(room.topic)
@@ -304,17 +307,17 @@ class BridgeBot:
 
             elif message_parts[0] == 'joinmuc':
                 if len(message_parts) < 2:
-                    logging.warning('joinmuc command didn\'t specify a room, ignoring')
+                    logger.warning('joinmuc command didn\'t specify a room, ignoring')
                     return
 
                 room_jid = message_parts[1]
-                logging.info('XMPP MUC join: {}'.format(room_jid))
+                logger.info('XMPP MUC join: {}'.format(room_jid))
                 self.create_groupchat_room(room_jid)
                 self.xmpp.plugin['xep_0045'].joinMUC(room_jid, self.xmpp_groupchat_nick)
 
             elif message_parts[0] == 'leavemuc':
                 if len(message_parts) < 2:
-                    logging.warning('leavemuc command didn\'t specify a room, ignoring')
+                    logger.warning('leavemuc command didn\'t specify a room, ignoring')
                     return
 
                 room_jid = message_parts[1]
@@ -340,7 +343,7 @@ class BridgeBot:
         if event['sender'] == self.bot_id:
             return
 
-        logging.debug('matrix_all_chat_message: {}  {}'.format(room.room_id, str(event)))
+        logger.debug('matrix_all_chat_message: {}  {}'.format(room.room_id, str(event)))
 
         room.send_notice('Don\'t talk in here! Nobody gets your messages.')
 
@@ -357,9 +360,9 @@ class BridgeBot:
             return
 
         if room.topic in self.special_rooms.keys():
-            logging.error('matrix_message called on special channel')
+            logger.error('matrix_message called on special channel')
 
-        logging.debug('matrix_message: {}  {}'.format(room.room_id, event))
+        logger.debug('matrix_message: {}  {}'.format(room.room_id, event))
 
         if event['content']['msgtype'] == 'm.text':
             message_body = event['content']['body']
@@ -371,12 +374,12 @@ class BridgeBot:
                 jid = room.topic
                 message_type = 'chat'
 
-            logging.info('Matrix received message to {} : {}'.format(jid, message_body))
+            logger.info('Matrix received message to {} : {}'.format(jid, message_body))
             self.xmpp.send_message(mto=jid, mbody=message_body, mtype=message_type)
 
             # Possible that we're in a room that wasn't mapped
             if jid not in self.xmpp.jid_nick_map:
-                logging.error('Received message in matrix room with topic {},'.format(jid) +
+                logger.error('Received message in matrix room with topic {},'.format(jid) +
                               'which wasn\'t in the jid_nick_map')
             name = self.xmpp.jid_nick_map.get(jid, jid)
 
@@ -392,19 +395,19 @@ class BridgeBot:
         :param message: The message that was received.
         :return:
         """
-        logging.info('XMPP received {} : {}'.format(message['from'].full, message['body']))
+        logger.info('XMPP received {} : {}'.format(message['from'].full, message['body']))
 
         if message['type'] in ('normal', 'chat'):
             from_jid = message['from'].bare
 
             if from_jid not in self.xmpp.jid_nick_map.keys():
-                logging.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
+                logger.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
                 self.xmpp.get_roster(block=True)
 
             from_name = self.xmpp.jid_nick_map.get(from_jid, from_jid)
 
             if from_jid in self.groupchat_jids:
-                logging.warning('Normal chat message from a groupchat, ignoring...')
+                logger.warning('Normal chat message from a groupchat, ignoring...')
                 return
 
             room = self.get_room_for_topic(from_jid)
@@ -421,7 +424,7 @@ class BridgeBot:
         :param message: The message that was received.
         :return:
         """
-        logging.info('XMPP MUC received {} : {}'.format(message['from'].full, message['body']))
+        logger.info('XMPP MUC received {} : {}'.format(message['from'].full, message['body']))
 
         if message['type'] == 'groupchat':
             from_jid = message['from'].bare
@@ -451,11 +454,11 @@ class BridgeBot:
 
         :param presence: The presence that was received.
         """
-        logging.debug('XMPP received {} : (available)'.format(presence['from'].full))
+        logger.debug('XMPP received {} : (available)'.format(presence['from'].full))
 
         jid = presence['from'].bare
         if jid not in self.xmpp.jid_nick_map.keys():
-            logging.error('xmpp_presence_available: JID {} NOT IN ROSTER!?'.format(jid))
+            logger.error('xmpp_presence_available: JID {} NOT IN ROSTER!?'.format(jid))
             self.xmpp.get_roster(block=True)
 
         if self.send_presences_to_control:
@@ -470,11 +473,11 @@ class BridgeBot:
 
         :param presence: The presence that was received.
         """
-        logging.debug('XMPP received {} : (unavailable)'.format(presence['from'].full))
+        logger.debug('XMPP received {} : (unavailable)'.format(presence['from'].full))
 
         jid = presence['from'].bare
         if jid not in self.xmpp.jid_nick_map.keys():
-            logging.error('xmpp_presence_unavailable: JID {} NOT IN ROSTER!?'.format(jid))
+            logger.error('xmpp_presence_unavailable: JID {} NOT IN ROSTER!?'.format(jid))
             self.xmpp.get_roster(block=True)
 
         if self.send_presences_to_control:
@@ -490,7 +493,7 @@ class BridgeBot:
 
         :param _event: The received roster update event (unused).
         """
-        logging.debug('######### ROSTER UPDATE ###########')
+        logger.debug('######### ROSTER UPDATE ###########')
 
         rjids = [jid for jid in self.xmpp.roster]
         if len(rjids) > 1:
@@ -505,13 +508,13 @@ class BridgeBot:
         # Create new rooms where none exist
         for jid, info in roster.items():
             if '@' not in jid:
-                logging.warning('Skipping fake jid in roster: ' + jid)
+                logger.warning('Skipping fake jid in roster: ' + jid)
                 continue
             name = info['name']
             self.xmpp.jid_nick_map[jid] = name
             self.create_mapped_room(topic=jid, name=name)
 
-        logging.debug('Sending invitations..')
+        logger.debug('Sending invitations..')
         # Invite to all rooms
         for room in self.matrix.get_rooms().values():
             users_in_room = room.get_joined_members()
@@ -519,7 +522,7 @@ class BridgeBot:
                 if user_id not in users_in_room:
                     room.invite_user(user_id)
 
-        logging.debug('######## Done with roster update #######')
+        logger.debug('######## Done with roster update #######')
 
 
 def main():
@@ -528,7 +531,7 @@ def main():
             bot = BridgeBot()
             bot.matrix.listen_forever()
         except MatrixError as e:
-            logging.error('MatrixError: {}'.format(e))
+            logger.error('Fatal Exception: {}'.format(e))
             pass
 
 
