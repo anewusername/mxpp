@@ -2,7 +2,7 @@
 
 **mxpp** is a bot which bridges Matrix and one-to-one XMPP chat.
 
-I wrote this bot to finally get persistent chat history for my 
+I wrote this bot to finally get persistent chat history for my
 gchat/hangouts/google talk conversations, and to evaluate Matrix
 for future use, so it should probably work for those use cases.
 
