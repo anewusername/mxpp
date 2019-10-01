@@ -46,11 +46,35 @@ xmpp:
 
   groupchat_nick: 'my_groupchat_name'
 
-# Send presence notices to the control channel
-send_presences_to_control: true
+# Ignore any groupchat messages that were sent by our own nick
+groupchat_mute_own_nick: true
+
+# Send groupchat messages to the all_chat channel
+groupchat_send_messages_to_all_chat: false
+
 
 # Send a copy of all messages to the all_chat channel
 send_messages_to_all_chat: true
 
-# Ignore any groupchat messages that were sent by our own nick
-groupchat_mute_own_nick: true
+# Create and user per-jid rooms
+send_messages_to_jid_rooms: false
+
+# Send presence notices to the control channel
+send_presences_to_control: false
+
+
+jid_groups:
+    # An example whitelist
+    - send_messages_to_all_chat: false
+      send_messages_to_jid_rooms: true
+      #send_presences_to_control: false
+      jids:
+          - 'friend1@example.com'
+          - 'friend2@example2.com'
+
+    # An example blacklist
+    - send_messages_to_all_chat: false
+      send_messages_to_jid_rooms: false
+      send_presences_to_control: false
+      jids:
+          - 'blacklisted@example.com'

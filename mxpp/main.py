@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Tuple, List
 import sys
+import time
 from queue import Queue
 
 if sys.version_info[0] != 3 or sys.version_info[1] < 5:
@@ -44,13 +45,15 @@ class BridgeBot:
     xmpp_roster_options = None  # type: Dict[str, bool]
     xmpp_groupchat_nick = None  # type: str
 
-    send_messages_to_all_chat = True    # type: bool
-    send_presences_to_control = True    # type: bool
+    default_actions = None          # type: Dict[str, bool]
+    jid_actions = None              # type: Dict[str, Dict[str, bool]]
     groupchat_mute_own_nick = True      # type: bool
+    groupchat_send_messages_to_all_chat = True      # type: bool
 
     inbound_xmpp = None         # type: Queue
 
     exception = None            # type: Exception or None
+
 
     @property
     def bot_id(self) -> str:
@@ -80,7 +83,7 @@ class BridgeBot:
         self.matrix.login_with_password(**self.matrix_login)
 
         # Recover existing matrix rooms
-        for room in self.matrix.get_rooms().values():
+        for room in list(self.matrix.get_rooms().values()):
             room.update_room_topic()
             topic = room.topic
 
@@ -94,6 +97,10 @@ class BridgeBot:
             elif topic.startswith(self.groupchat_flag):
                 room_jid = topic[len(self.groupchat_flag):]
                 self.groupchat_jids.append(room_jid)
+
+            elif not self.jid_actions.get(topic, self.default_actions)['send_messages_to_jid_rooms']:
+                logger.info('Room ' + topic + ' is not needed due to send_messages_to_jid_rooms setting, leaving!')
+                room.leave()
 
         # Prepare matrix special rooms and their listeners
         for topic, room in self.special_rooms.items():
@@ -171,9 +178,19 @@ class BridgeBot:
         self.xmpp_login = config['xmpp']['login']
         self.xmpp_groupchat_nick = config['xmpp']['groupchat_nick']
 
-        self.send_presences_to_control = config['send_presences_to_control']
-        self.send_messages_to_all_chat = config['send_messages_to_all_chat']
+        self.default_actions = {k: config[k] for k in ('send_messages_to_all_chat',
+                                                       'send_messages_to_jid_rooms',
+                                                       'send_presences_to_control')}
+        self.jid_actions = {}
+        for group in config['jid_groups']:
+            group_data = group.copy()
+            group_jids = group_data.pop('jids')
+            for jid in group['jids']:
+                self.jid_actions.setdefault(jid, self.default_actions.copy())
+                self.jid_actions[jid].update(group_data)
+
         self.groupchat_mute_own_nick = config['groupchat_mute_own_nick']
+        self.groupchat_send_messages_to_all_chat = config['groupchat_send_messages_to_all_chat']
 
         self.xmpp_roster_options = config['xmpp']['roster_options']
 
@@ -429,7 +446,8 @@ class BridgeBot:
                               'which wasn\'t in the jid_nick_map')
             name = self.xmpp.jid_nick_map.get(jid, jid)
 
-            if self.send_messages_to_all_chat:
+            send_message = self.jid_actions.get(jid, self.default_actions)['send_messages_to_all_chat']
+            if send_message:
                 self.special_rooms['all_chat'].send_notice('To {} : {}'.format(name, message_body))
 
     def xmpp_message(self, message: Dict):
@@ -445,21 +463,20 @@ class BridgeBot:
 
         if message['type'] in ('normal', 'chat'):
             from_jid = message['from'].bare
+            from_name = self.xmpp.jid_nick_map.get(from_jid, from_jid)
 
+            send_message2all = self.jid_actions.get(from_jid, self.default_actions)['send_messages_to_all_chat']
+            if send_message2all:
+                self.special_rooms['all_chat'].send_text('From  ({})\n{}: {}'.format(from_jid, from_name, message['body']))
+
+            send_message2room  = self.jid_actions.get(from_jid, self.default_actions)['send_messages_to_jid_rooms']
+            if send_message2room:
             if from_jid not in self.xmpp.jid_nick_map.keys():
                 logger.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
                 self.xmpp.get_roster(block=True)
 
-            if from_jid in self.groupchat_jids:
-                logger.warning('Normal chat message from a groupchat, ignoring...')
-                return
-
-            from_name = self.xmpp.jid_nick_map.get(from_jid, from_jid)
-
             room = self.get_room_for_topic(from_jid)
             room.send_text(message['body'])
-            if self.send_messages_to_all_chat:
-                self.special_rooms['all_chat'].send_text('From {}: {}'.format(from_name, message['body']))
 
     def xmpp_groupchat_message(self, message: Dict):
         """
@@ -481,7 +498,8 @@ class BridgeBot:
 
             room = self.get_room_for_topic(self.groupchat_flag + from_jid)
             room.send_text(from_name + ': ' + message['body'])
-            if self.send_messages_to_all_chat:
+
+            if self.groupchat_send_messages_to_all_chat:
                 self.special_rooms['all_chat'].send_text(
                     'Room {}, from {}: {}'.format(from_jid, from_name, message['body']))
 
@@ -507,7 +525,8 @@ class BridgeBot:
             logger.error('xmpp_presence_available: JID {} NOT IN ROSTER!?'.format(jid))
             self.xmpp.get_roster(block=True)
 
-        if self.send_presences_to_control:
+        send_presence = self.jid_actions.get(jid, self.default_actions)['send_presences_to_control']
+        if send_presence:
             name = self.xmpp.jid_nick_map.get(jid, jid)
             self.special_rooms['control'].send_notice('{} available ({})'.format(name, jid))
 
@@ -526,7 +545,8 @@ class BridgeBot:
             logger.error('xmpp_presence_unavailable: JID {} NOT IN ROSTER!?'.format(jid))
             self.xmpp.get_roster(block=True)
 
-        if self.send_presences_to_control:
+        send_presence = self.jid_actions.get(jid, self.default_actions)['send_presences_to_control']
+        if send_presence:
             name = self.xmpp.jid_nick_map.get(jid, jid)
             self.special_rooms['control'].send_notice('{} unavailable ({})'.format(name, jid))
 
@@ -556,8 +576,12 @@ class BridgeBot:
             if '@' not in jid:
                 logger.warning('Skipping fake jid in roster: ' + jid)
                 continue
+
             name = info['name']
             self.xmpp.jid_nick_map[jid] = name
+
+            # Check if we need to create a room
+            if self.jid_actions.get(jid, self.default_actions)['send_messages_to_jid_rooms']:
             self.create_mapped_room(topic=jid, name=name)
 
         logger.debug('Sending invitations..')
