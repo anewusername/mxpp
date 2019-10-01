@@ -51,7 +51,7 @@ then invites a list of Matrix users (of your choosing) to all the rooms.
 ## Installation
 Install the dependencies:
 ```bash
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 Edit config.yaml to set your usernames, passwords, and servers.
