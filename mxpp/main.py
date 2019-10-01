@@ -88,6 +88,9 @@ class BridgeBot:
                 logger.debug('Recovering special room: ' + topic)
                 self.special_rooms[topic] = room
 
+            elif topic is None:
+                room.leave()
+
             elif topic.startswith(self.groupchat_flag):
                 room_jid = topic[len(self.groupchat_flag):]
                 self.groupchat_jids.append(room_jid)
