@@ -614,9 +614,12 @@ def main():
             bot = BridgeBot()
             bot.handle_inbound_xmpp()
         except Exception as e:
-            bot.shutdown()
             logger.error('Fatal Exception: {}'.format(e))
+            try:
+                bot.shutdown()
+            except Exception:
             pass
+            time.sleep(1);
 
 
 if __name__ == "__main__":
