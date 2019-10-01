@@ -158,7 +158,7 @@ class BridgeBot:
 
     def load_config(self, path: str):
         with open(path, 'r') as conf_file:
-            config = yaml.load(conf_file)
+            config = yaml.safe_load(conf_file)
 
         self.users_to_invite = config['matrix']['users_to_invite']
         self.matrix_room_topics = config['matrix']['room_topics']
