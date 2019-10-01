@@ -27,7 +27,10 @@ then invites a list of Matrix users (of your choosing) to all the rooms.
       allow you to join and leave multi-user chats.
 * A room named "XMPP All Chat" is created
     - All inbound and outbound chat messages are logged here.
-    - The bot complains if you talk in here.
+    - Enabled with per-user granularity using the ```send_messages_to_all_chat```
+      option in ```config.yaml```
+    - You can send a message directly to a jid without creating a room using
+      the ```/m jid@example.com your message here``` syntax in this room.
 * If the bot is restarted, it recreates its room-JID map based on the
   room topics, and continues as before.
 * Currently, the bot automatically accepts anytime anyone asks to add
