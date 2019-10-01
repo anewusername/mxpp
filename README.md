@@ -11,13 +11,17 @@ for future use, so it should probably work for those use cases.
 
 * The bot creates one Matrix room for each user on your contact list,
 then invites a list of Matrix users (of your choosing) to all the rooms.
+    - Enabled with ```send_messages_to_jid_rooms``` option in ```config.yaml```
+      and can be controlled with per-user granularity
     - Room name is set to the contact's name.
     - Room topic is set to the contact's JID.
     - Any text sent to the room is sent to the contact's JID.
-    * Any text received from the contact's JID is sent as a notice
+    - Any text received from the contact's JID is sent as a notice
       to the room.
 * A room named "XMPP Control Room" is created
-    - Presence info ("available" or "unavailable") is sent to this room
+    - Presence info ("available" or "unavailable") is sent to this room,
+      controllable per-user with the ```send_presences_to_control``` option
+      in ```config.yaml```
     - Text command ```purge``` makes the bot leave from any rooms which do
       not correspond to a roster entry (excluding the two special rooms),
       and also from any unoccupied rooms (eg. if the user left).
