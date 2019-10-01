@@ -397,7 +397,8 @@ class BridgeBot:
         """
         Handle a message sent to Matrix all-chat room.
 
-        Currently just sends a warning that nobody will hear your message.
+        Allows manual sending of xmpp messages: "/m target_jid your message here".
+        Sends a notice with the expected format if it isn't there by default.
 
         :param room: Matrix room object representing the all-chat room
         :param event: The Matrix event that was received. Assumed to be an m.room.message .
@@ -408,7 +409,16 @@ class BridgeBot:
 
         logger.debug('matrix_all_chat_message: {}  {}'.format(room.room_id, str(event)))
 
-        room.send_notice('Don\'t talk in here! Nobody gets your messages.')
+        if event['content']['msgtype'] == 'm.text':
+            message_body = event['content']['body']
+            message_parts = message_body.split()
+            if message_parts[0] == '/m':
+                jid = message_parts[1]
+                payload = message_body[message_body.find(jid) + len(jid) + 1:]
+                logger.info('sending manual message to '+ jid + ' : ' + payload)
+                self.xmpp.send_message(mto=jid, mbody=payload, mtype='chat')
+            else:
+                room.send_notice('Expected message format: "/m DEST_JID your message here"')
 
     def matrix_message(self, room: MatrixRoom, event: Dict):
         """
