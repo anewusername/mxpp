@@ -47,7 +47,7 @@ class BridgeBot:
 
     default_actions = None          # type: Dict[str, bool]
     jid_actions = None              # type: Dict[str, Dict[str, bool]]
-    groupchat_mute_own_nick = True      # type: bool
+    groupchat_mute_own_nick = True                  # type: bool
     groupchat_send_messages_to_all_chat = True      # type: bool
 
     inbound_xmpp = None         # type: Queue
@@ -481,12 +481,12 @@ class BridgeBot:
 
             send_message2room  = self.jid_actions.get(from_jid, self.default_actions)['send_messages_to_jid_rooms']
             if send_message2room:
-            if from_jid not in self.xmpp.jid_nick_map.keys():
-                logger.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
-                self.xmpp.get_roster(block=True)
+                if from_jid not in self.xmpp.jid_nick_map.keys():
+                    logger.error('xmpp_message: JID {} NOT IN ROSTER!?'.format(from_jid))
+                    self.xmpp.get_roster(block=True)
 
-            room = self.get_room_for_topic(from_jid)
-            room.send_text(message['body'])
+                room = self.get_room_for_topic(from_jid)
+                room.send_text(message['body'])
 
     def xmpp_groupchat_message(self, message: Dict):
         """
@@ -592,7 +592,7 @@ class BridgeBot:
 
             # Check if we need to create a room
             if self.jid_actions.get(jid, self.default_actions)['send_messages_to_jid_rooms']:
-            self.create_mapped_room(topic=jid, name=name)
+                self.create_mapped_room(topic=jid, name=name)
 
         logger.debug('Sending invitations..')
         # Invite to all rooms
@@ -618,7 +618,7 @@ def main():
             try:
                 bot.shutdown()
             except Exception:
-            pass
+                pass
             time.sleep(1);
 
 
